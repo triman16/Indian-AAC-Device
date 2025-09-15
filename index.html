@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>बोलो - Bolo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Baloo 2', sans-serif;
+            background: linear-gradient(135deg, #f8f0e5, #e6e6fa);
+            color: #4a5568;
+            padding: 1rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 20px rgba(0, 0, 0, 0.15);
+        }
+        .card-image {
+            width: 100%;
+            height: auto;
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+        }
+        .selected-card {
+            background-color: #a8d5e2;
+            border-radius: 0.75rem;
+            transition: transform 0.2s;
+        }
+        .input-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold text-[#6a5acd] drop-shadow-lg">बोलो</h1>
+        <p class="text-xl sm:text-2xl mt-2 text-[#8a2be2]">Bolo - Speak</p>
+    </header>
+
+    <!-- Sentence Display Area -->
+    <div id="sentence-container" class="bg-white p-4 sm:p-6 rounded-2xl shadow-inner mb-6 flex flex-wrap items-center min-h-[5rem] transition-all duration-300">
+        <span id="instruction" class="text-gray-400 text-lg sm:text-xl italic">Tap on the pictures to build a sentence...</span>
+    </div>
+
+    <!-- Custom Word Input -->
+    <div class="flex gap-4 mb-8">
+        <div class="input-container w-full">
+            <input type="text" id="custom-word-input" placeholder="Type your word here..." class="w-full py-2 px-4 rounded-full border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8a2be2] transition-all" />
+        </div>
+        <button id="add-word-button" class="bg-gray-400 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-gray-500 transition-colors flex-shrink-0">
+            Add Word
+        </button>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex justify-center sm:justify-end gap-4 mb-8">
+        <button id="speak-button" class="bg-[#6a5acd] text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-[#8a2be2] transition-colors">
+            बोलो (Speak)
+        </button>
+        <button id="clear-button" class="bg-gray-400 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-gray-500 transition-colors">
+            Clear
+        </button>
+    </div>
+
+    <!-- Communication Cards Grid -->
+    <main id="card-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 flex-grow"></main>
+
+    <script>
+        // Initial set of cards
+        const cardsData = [
+            { label_hi: 'माँ', label_en: 'Mom', image: 'https://placehold.co/300x200/FFD1DC/FF69B4?text=Mom' },
+            { label_hi: 'पिता', label_en: 'Dad', image: 'https://placehold.co/300x200/ADD8E6/0000FF?text=Dad' },
+            { label_hi: 'दादा', label_en: 'Grandpa', image: 'https://placehold.co/300x200/E0BBE4/957DAD?text=Grandpa' },
+            { label_hi: 'दादी', label_en: 'Grandma', image: 'https://placehold.co/300x200/FEE1E8/F7B4C8?text=Grandma' },
+            { label_hi: 'हाँ', label_en: 'Yes', image: 'https://placehold.co/300x200/C8F7DC/006400?text=Yes' },
+            { label_hi: 'नहीं', label_en: 'No', image: 'https://placehold.co/300x200/FFCCCC/8B0000?text=No' },
+            { label_hi: 'पानी', label_en: 'Water', image: 'https://placehold.co/300x200/B0E0E6/4682B4?text=Water' },
+            { label_hi: 'खाना', label_en: 'Food', image: 'https://placehold.co/300x200/FFE4B5/FF8C00?text=Food' },
+            { label_hi: 'दूध', label_en: 'Milk', image: 'https://placehold.co/300x200/FFF8DC/D2B48C?text=Milk' },
+            { label_hi: 'बाहर', label_en: 'Outside', image: 'https://placehold.co/300x200/B0C4DE/778899?text=Outside' },
+            { label_hi: 'अंदर', label_en: 'Inside', image: 'https://placehold.co/300x200/F0F8FF/5F9EA0?text=Inside' },
+            { label_hi: 'खेलना', label_en: 'Play', image: 'https://placehold.co/300x200/FDFD96/FFD700?text=Play' },
+            { label_hi: 'सोना', label_en: 'Sleep', image: 'https://placehold.co/300x200/DCDCDC/A9A9A9?text=Sleep' },
+            { label_hi: 'दर्द', label_en: 'Pain', image: 'https://placehold.co/300x200/FFC0CB/FF1493?text=Pain' },
+            { label_hi: 'खुश', label_en: 'Happy', image: 'https://placehold.co/300x200/FFFACD/DAA520?text=Happy' },
+            { label_hi: 'उदास', label_en: 'Sad', image: 'https://placehold.co/300x200/A0B9DE/697BA1?text=Sad' },
+            { label_hi: 'टट्टी', label_en: 'Potty', image: 'https://placehold.co/300x200/8B4513/A0522D?text=Potty' },
+            { label_hi: 'बैठना', label_en: 'Sit', image: 'https://placehold.co/300x200/D4F1F4/448FA8?text=Sit' },
+            { label_hi: 'दौड़ना', label_en: 'Run', image: 'https://placehold.co/300x200/F0D9D5/CC5500?text=Run' },
+            { label_hi: 'ताली बजाओ', label_en: 'Clap', image: 'https://placehold.co/300x200/E5CCFF/8A2BE2?text=Clap' },
+            { label_hi: 'रोना', label_en: 'Cry', image: 'https://placehold.co/300x200/B2D3C4/3D7068?text=Cry' },
+            { label_hi: 'फल', label_en: 'Fruits', image: 'https://placehold.co/300x200/FFE9E9/FF5733?text=Fruits' },
+        ];
+
+        const sentenceContainer = document.getElementById('sentence-container');
+        const cardGrid = document.getElementById('card-grid');
+        const clearButton = document.getElementById('clear-button');
+        const speakButton = document.getElementById('speak-button');
+        const customWordInput = document.getElementById('custom-word-input');
+        const addWordButton = document.getElementById('add-word-button');
+        const instructionSpan = document.getElementById('instruction');
+
+        let currentSentence = [];
+
+        // Function to render all cards in the grid
+        const renderCards = () => {
+            cardGrid.innerHTML = '';
+            cardsData.forEach(card => {
+                const button = document.createElement('button');
+                button.className = 'card p-4 flex flex-col items-center cursor-pointer';
+                const imageSource = card.image || `https://placehold.co/300x200/E0E0E0/808080?text=${encodeURIComponent(card.label_en)}%0A${encodeURIComponent(card.label_hi)}`;
+                button.innerHTML = `
+                    <img src="${imageSource}" alt="${card.label_en}" class="card-image w-full h-auto rounded-xl mb-2" />
+                    <span class="text-xl sm:text-2xl font-bold mt-2 text-center">${card.label_hi}</span>
+                    <span class="text-sm text-gray-500">${card.label_en}</span>
+                `;
+                button.onclick = () => addCardToSentence(card);
+                cardGrid.appendChild(button);
+            });
+        };
+
+        // Function to update the sentence display at the top
+        const updateSentenceDisplay = () => {
+            sentenceContainer.innerHTML = '';
+            if (currentSentence.length === 0) {
+                instructionSpan.style.display = 'block';
+            } else {
+                instructionSpan.style.display = 'none';
+                currentSentence.forEach(card => {
+                    const selectedCardDiv = document.createElement('div');
+                    selectedCardDiv.className = 'selected-card p-2 m-1 flex-shrink-0';
+                    selectedCardDiv.innerHTML = `<span class="text-lg">${card.label_hi}</span>`;
+                    sentenceContainer.appendChild(selectedCardDiv);
+                });
+            }
+        };
+
+        // Adds a clicked card to the sentence array
+        const addCardToSentence = (card) => {
+            currentSentence.push(card);
+            updateSentenceDisplay();
+        };
+        
+        // Speaks the current sentence
+        const speakSentence = () => {
+            const sentenceToSpeak = currentSentence.map(card => card.label_hi).join(' ');
+            if (sentenceToSpeak) {
+                const utterance = new SpeechSynthesisUtterance(sentenceToSpeak);
+                utterance.lang = 'hi-IN'; // Set language to Hindi
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        // Adds a custom word as a new card to the main grid
+        const addCustomWord = async () => {
+            const englishWord = customWordInput.value.trim();
+            if (!englishWord) return;
+
+            addWordButton.disabled = true;
+            addWordButton.textContent = 'Adding...';
+
+            try {
+                const systemPrompt = "Translate the following English word into a single Hindi word. Only provide the Hindi word and nothing else. For example, 'Dog' should be 'कुत्ता' and 'Cat' should be 'बिल्ली'. If no clear translation is available, repeat the English word in Devanagari script.";
+                const userQuery = englishWord;
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                let hindiWord = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || englishWord;
+                
+                // Remove any invisible or non-alphabetic characters, and ensure a non-empty string.
+                hindiWord = hindiWord.replace(/[\u200B]/g, '').trim(); 
+                if (!hindiWord) {
+                    hindiWord = englishWord;
+                }
+                
+                const newCard = {
+                    label_en: englishWord,
+                    label_hi: hindiWord,
+                    image: `https://placehold.co/300x200/E0E0E0/808080?text=${encodeURIComponent(englishWord)}%0A${encodeURIComponent(hindiWord)}`
+                };
+                cardsData.push(newCard);
+                renderCards();
+                customWordInput.value = '';
+            } catch (error) {
+                console.error("Error adding word:", error);
+            } finally {
+                addWordButton.disabled = false;
+                addWordButton.textContent = 'Add Word';
+            }
+        };
+
+        // Clears the sentence
+        const clearSentence = () => {
+            currentSentence = [];
+            updateSentenceDisplay();
+        };
+
+        // Event Listeners
+        clearButton.addEventListener('click', clearSentence);
+        speakButton.addEventListener('click', speakSentence);
+        addWordButton.addEventListener('click', addCustomWord);
+
+        // Initial render
+        renderCards();
+        updateSentenceDisplay();
+    </script>
+</body>
+</html>
