@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#6a5acd" />
+    <title>बोलो · Bolo — Talk in Your Language</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        :root { --brand: #6a5acd; --brand-2: #8a2be2; }
+        * { -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Baloo 2', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f8f0e5, #e6e6fa);
+            color: #3f4657;
+            margin: 0;
+            min-height: 100vh;
+        }
+        /* --- Communication cards --- */
+        .card {
+            background: #fff;
+            border-radius: 1.25rem;
+            box-shadow: 0 6px 14px rgba(0,0,0,.08);
+            transition: transform .12s ease, box-shadow .12s ease;
+            cursor: pointer;
+            border: 3px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: .9rem .5rem;
+            min-height: 128px;
+            user-select: none;
+        }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px rgba(0,0,0,.14); }
+        .card:active { transform: scale(.95); }
+        .card .emoji { font-size: 2.9rem; line-height: 1; margin-bottom: .35rem; }
+        .card .primary { font-size: 1.35rem; font-weight: 800; text-align: center; line-height: 1.15; }
+        .card .secondary { font-size: .85rem; color: #8b93a7; margin-top: .1rem; text-align: center; }
+        /* soft category tints */
+        .cat-people  { background:#fff5f8; border-color:#ffd6e5; }
+        .cat-answer  { background:#f3fbf4; border-color:#c9edcf; }
+        .cat-needs   { background:#f1f8ff; border-color:#cfe6ff; }
+        .cat-feelings{ background:#fffdf0; border-color:#f6ecc0; }
+        .cat-actions { background:#f7f2ff; border-color:#e2d3ff; }
+        .cat-social  { background:#fff6ef; border-color:#ffdcc2; }
+
+        /* --- Language side bar chips --- */
+        .lang-chip {
+            display: flex; align-items: center; justify-content: center;
+            gap: .4rem;
+            padding: .6rem .75rem;
+            border-radius: 1rem;
+            background: #ffffffcc;
+            border: 2px solid transparent;
+            font-weight: 700;
+            font-size: 1.05rem;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all .12s ease;
+            flex-shrink: 0;
+        }
+        .lang-chip:hover { background:#fff; }
+        .lang-chip.active {
+            background: var(--brand);
+            color: #fff;
+            border-color: var(--brand-2);
+            box-shadow: 0 6px 14px rgba(106,90,205,.35);
+        }
+        .lang-chip small { font-size:.7rem; font-weight:600; opacity:.75; }
+
+        .btn { border-radius: 999px; font-weight: 700; transition: all .12s ease; box-shadow: 0 6px 14px rgba(0,0,0,.10); }
+        .btn:active { transform: scale(.96); }
+
+        /* hide scrollbar on the language rail (mobile) */
+        .no-sb::-webkit-scrollbar { display:none; }
+        .no-sb { -ms-overflow-style:none; scrollbar-width:none; }
+
+        #loading { backdrop-filter: blur(3px); }
+        .spinner { width:44px; height:44px; border:5px solid #e6e0f7; border-top-color:var(--brand); border-radius:50%; animation:spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="flex flex-col md:flex-row min-h-screen">
+
+        <!-- ============ LANGUAGE SIDE BAR ============ -->
+        <aside class="bg-white/50 md:w-44 md:min-h-screen p-3 md:p-4 md:border-r border-b md:border-b-0 border-white shadow-sm">
+            <p class="hidden md:block text-center text-xs font-bold text-[var(--brand)] uppercase tracking-wide mb-3">🌐 Language</p>
+            <div id="lang-rail" class="flex md:flex-col gap-2 overflow-x-auto no-sb pb-1 md:pb-0"></div>
+        </aside>
+
+        <!-- ============ MAIN AREA ============ -->
+        <main class="flex-1 p-3 sm:p-6 flex flex-col">
+
+            <!-- Header -->
+            <header class="text-center mb-4">
+                <h1 class="text-4xl sm:text-6xl font-extrabold text-[var(--brand)] drop-shadow">बोलो</h1>
+                <p id="tagline" class="text-lg sm:text-2xl text-[var(--brand-2)] font-semibold">Bolo — Let's Talk</p>
+            </header>
+
+            <!-- Sentence strip -->
+            <div id="sentence" class="bg-white rounded-2xl shadow-inner px-4 py-3 mb-3 flex flex-wrap items-center gap-2 min-h-[4.5rem]">
+                <span id="instruction" class="text-gray-400 text-base sm:text-xl italic">Tap the pictures to build a sentence…</span>
+            </div>
+
+            <!-- Big controls -->
+            <div class="flex gap-2 sm:gap-3 mb-4">
+                <button id="speak-btn" class="btn flex-1 bg-[var(--brand)] hover:bg-[var(--brand-2)] text-white text-xl sm:text-2xl py-3 px-4">🔊 <span id="speak-lbl">Speak</span></button>
+                <button id="back-btn"  class="btn bg-amber-400 hover:bg-amber-500 text-white text-xl py-3 px-5" title="Delete last">⌫</button>
+                <button id="clear-btn" class="btn bg-gray-300 hover:bg-gray-400 text-gray-700 text-base sm:text-lg py-3 px-5"><span id="clear-lbl">Clear</span></button>
+            </div>
+
+            <!-- Add custom word -->
+            <div class="flex gap-2 mb-5">
+                <input id="add-input" type="text" placeholder="Type your word…" class="flex-1 py-3 px-5 rounded-full border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--brand-2)] text-lg" />
+                <button id="add-btn" class="btn bg-emerald-500 hover:bg-emerald-600 text-white text-lg py-3 px-6 flex-shrink-0">➕ <span id="add-lbl">Add</span></button>
+            </div>
+
+            <!-- Cards grid -->
+            <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 flex-grow content-start"></div>
+        </main>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="fixed inset-0 bg-white/70 flex-col items-center justify-center gap-3 z-50 hidden">
+        <div class="spinner"></div>
+        <p id="loading-txt" class="text-[var(--brand)] font-bold text-lg">Loading language…</p>
+    </div>
+
+<script>
+/* ============================================================
+   बोलो · Bolo — simple multi-language AAC communication board
+   - Core words are built in for English + Hindi (instant, offline)
+   - Any other Indian language is fetched once (free translate)
+     and then CACHED on the device, so it works offline after that
+   ============================================================ */
+
+// ---- Languages the parent can choose from ----
+// code = used for translation + text-to-speech,  tts = speech voice locale
+const LANGS = [
+    { code:'en', native:'English',  en:'English',   tts:'en-IN' },
+    { code:'hi', native:'हिन्दी',    en:'Hindi',     tts:'hi-IN' },
+    { code:'bn', native:'বাংলা',     en:'Bengali',   tts:'bn-IN' },
+    { code:'ta', native:'தமிழ்',     en:'Tamil',     tts:'ta-IN' },
+    { code:'te', native:'తెలుగు',    en:'Telugu',    tts:'te-IN' },
+    { code:'mr', native:'मराठी',     en:'Marathi',   tts:'mr-IN' },
+    { code:'gu', native:'ગુજરાતી',   en:'Gujarati',  tts:'gu-IN' },
+    { code:'kn', native:'ಕನ್ನಡ',     en:'Kannada',   tts:'kn-IN' },
+    { code:'ml', native:'മലയാളം',    en:'Malayalam', tts:'ml-IN' },
+    { code:'pa', native:'ਪੰਜਾਬੀ',    en:'Punjabi',   tts:'pa-IN' },
+    { code:'or', native:'ଓଡ଼ିଆ',      en:'Odia',      tts:'or-IN' },
+    { code:'ur', native:'اردو',      en:'Urdu',      tts:'ur-IN' },
+];
+
+// ---- Core vocabulary (English base + emoji + colour group) ----
+const WORDS = [
+    { id:'mom',    emoji:'👩', cat:'people'   },
+    { id:'dad',    emoji:'👨', cat:'people'   },
+    { id:'grandma',emoji:'👵', cat:'people'   },
+    { id:'grandpa',emoji:'👴', cat:'people'   },
+    { id:'yes',    emoji:'✅', cat:'answer'   },
+    { id:'no',     emoji:'❌', cat:'answer'   },
+    { id:'water',  emoji:'💧', cat:'needs'    },
+    { id:'food',   emoji:'🍚', cat:'needs'    },
+    { id:'milk',   emoji:'🥛', cat:'needs'    },
+    { id:'eat',    emoji:'🍽️', cat:'needs'    },
+    { id:'drink',  emoji:'🥤', cat:'needs'    },
+    { id:'toilet', emoji:'🚽', cat:'needs'    },
+    { id:'medicine',emoji:'💊',cat:'needs'    },
+    { id:'help',   emoji:'🆘', cat:'needs'    },
+    { id:'happy',  emoji:'😊', cat:'feelings' },
+    { id:'sad',    emoji:'😢', cat:'feelings' },
+    { id:'pain',   emoji:'🤕', cat:'feelings' },
+    { id:'tired',  emoji:'😴', cat:'feelings' },
+    { id:'angry',  emoji:'😠', cat:'feelings' },
+    { id:'scared', emoji:'😨', cat:'feelings' },
+    { id:'play',   emoji:'🧸', cat:'actions'  },
+    { id:'sleep',  emoji:'🛏️', cat:'actions'  },
+    { id:'sit',    emoji:'🪑', cat:'actions'  },
+    { id:'stand',  emoji:'🧍', cat:'actions'  },
+    { id:'go',     emoji:'🚶', cat:'actions'  },
+    { id:'stop',   emoji:'🛑', cat:'actions'  },
+    { id:'come',   emoji:'👐', cat:'actions'  },
+    { id:'more',   emoji:'➕', cat:'actions'  },
+    { id:'want',   emoji:'🙋', cat:'actions'  },
+    { id:'hello',  emoji:'👋', cat:'social'   },
+    { id:'bye',    emoji:'🤚', cat:'social'   },
+    { id:'thanks', emoji:'🙏', cat:'social'   },
+    { id:'sorry',  emoji:'😔', cat:'social'   },
+    { id:'please', emoji:'🥺', cat:'social'   },
+];
+
+// English word text (base) + UI labels
+const EN_WORDS = {
+    mom:'Mom', dad:'Dad', grandma:'Grandma', grandpa:'Grandpa',
+    yes:'Yes', no:'No', water:'Water', food:'Food', milk:'Milk',
+    eat:'Eat', drink:'Drink', toilet:'Toilet', medicine:'Medicine', help:'Help',
+    happy:'Happy', sad:'Sad', pain:'Pain', tired:'Tired', angry:'Angry', scared:'Scared',
+    play:'Play', sleep:'Sleep', sit:'Sit', stand:'Stand', go:'Go', stop:'Stop',
+    come:'Come', more:'More', want:'Want',
+    hello:'Hello', bye:'Bye', thanks:'Thank you', sorry:'Sorry', please:'Please',
+};
+const EN_UI = { tagline:"Bolo — Let's Talk", instruction:'Tap the pictures to build a sentence…',
+    speak:'Speak', clear:'Clear', add:'Add', adding:'Adding…', typeHere:'Type your word…' };
+
+// Built-in Hindi (verified) — so Hindi works instantly, offline
+const HI_WORDS = {
+    mom:'माँ', dad:'पापा', grandma:'दादी', grandpa:'दादा',
+    yes:'हाँ', no:'नहीं', water:'पानी', food:'खाना', milk:'दूध',
+    eat:'खाओ', drink:'पिओ', toilet:'टॉयलेट', medicine:'दवाई', help:'मदद',
+    happy:'खुश', sad:'उदास', pain:'दर्द', tired:'थकान', angry:'गुस्सा', scared:'डर',
+    play:'खेलो', sleep:'सोना', sit:'बैठो', stand:'खड़े हो', go:'जाओ', stop:'रुको',
+    come:'आओ', more:'और', want:'चाहिए',
+    hello:'नमस्ते', bye:'अलविदा', thanks:'धन्यवाद', sorry:'माफ़ करो', please:'कृपया',
+};
+const HI_UI = { tagline:'बोलो — बात करो', instruction:'तस्वीरों पर टैप करके वाक्य बनाएँ…',
+    speak:'बोलो', clear:'साफ़ करें', add:'जोड़ें', adding:'जोड़ रहे हैं…', typeHere:'अपना शब्द लिखें…' };
+
+// ---- Local cache of translations (persisted in the browser) ----
+const CACHE_KEY = 'bolo_cache_v2';
+let cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+cache.en = cache.en || { words: {...EN_WORDS}, ui: {...EN_UI} };
+cache.hi = cache.hi || { words: {...HI_WORDS}, ui: {...HI_UI} };
+const saveCache = () => localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+
+// custom words the parent has added (kept for the session)
+let customWords = [];      // [{id, emoji, cat}]
+let currentLang = localStorage.getItem('bolo_lang') || 'en';
+let sentence = [];         // array of word ids
+
+// ---- DOM refs ----
+const $ = id => document.getElementById(id);
+const grid = $('grid'), sentenceEl = $('sentence'), instruction = $('instruction');
+const loading = $('loading');
+
+// ============ Translation (free Google endpoint, cached) ============
+async function translateBatch(texts, tl) {
+    const q = texts.join('\n');
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${tl}&dt=t&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const joined = data[0].map(seg => seg[0]).join('');
+    let out = joined.split('\n').map(s => s.trim());
+    if (out.length !== texts.length) out = texts.slice(); // safety fallback
+    return out;
+}
+
+// Make sure a language's core words + UI are available (fetch + cache once)
+async function ensureLang(code) {
+    if (cache[code]) return true;
+    showLoading(true, code);
+    try {
+        const ids   = WORDS.map(w => w.id);
+        const uiKeys= Object.keys(EN_UI);
+        const wordTexts = ids.map(id => EN_WORDS[id]);
+        const uiTexts   = uiKeys.map(k => EN_UI[k]);
+        const [wOut, uOut] = await Promise.all([
+            translateBatch(wordTexts, code),
+            translateBatch(uiTexts, code),
+        ]);
+        const words = {}, ui = {};
+        ids.forEach((id, i)  => words[id] = wOut[i] || EN_WORDS[id]);
+        uiKeys.forEach((k,i) => ui[k]     = uOut[i] || EN_UI[k]);
+        cache[code] = { words, ui };
+        saveCache();
+        return true;
+    } catch (e) {
+        console.error('Translation failed:', e);
+        alert('Could not load this language. Please check your internet and try once — it is saved after the first time.');
+        return false;
+    } finally {
+        showLoading(false);
+    }
+}
+
+function showLoading(on, code) {
+    if (on) {
+        const l = LANGS.find(x => x.code === code);
+        $('loading-txt').textContent = 'Loading ' + (l ? l.en : '') + '…';
+        loading.classList.remove('hidden'); loading.classList.add('flex');
+    } else {
+        loading.classList.add('hidden'); loading.classList.remove('flex');
+    }
+}
+
+// ============ Text for the current language ============
+const T = () => cache[currentLang] || cache.en;
+function wordText(id) {
+    return (T().words && T().words[id]) || EN_WORDS[id] || id;
+}
+function allWords() { return [...WORDS, ...customWords]; }
+
+// ============ Rendering ============
+function renderLangRail() {
+    const rail = $('lang-rail');
+    rail.innerHTML = '';
+    LANGS.forEach(l => {
+        const b = document.createElement('button');
+        b.className = 'lang-chip' + (l.code === currentLang ? ' active' : '');
+        b.innerHTML = `<span>${l.native}</span>` + (l.code!=='en' ? `<small>${l.en}</small>` : '');
+        b.onclick = () => switchLang(l.code);
+        rail.appendChild(b);
+    });
+}
+
+function renderCards() {
+    grid.innerHTML = '';
+    allWords().forEach(w => {
+        const btn = document.createElement('button');
+        btn.className = `card cat-${w.cat}`;
+        const primary = wordText(w.id);
+        const showEn = currentLang !== 'en';
+        btn.innerHTML = `
+            <div class="emoji">${w.emoji}</div>
+            <div class="primary">${primary}</div>
+            ${showEn ? `<div class="secondary">${EN_WORDS[w.id] || w.id}</div>` : ``}`;
+        btn.onclick = () => { sentence.push(w.id); renderSentence(); speakOne(w.id); };
+        grid.appendChild(btn);
+    });
+}
+
+function renderSentence() {
+    if (sentence.length === 0) {
+        sentenceEl.innerHTML = '';
+        sentenceEl.appendChild(instruction);
+        instruction.style.display = 'block';
+        return;
+    }
+    instruction.style.display = 'none';
+    sentenceEl.innerHTML = '';
+    sentence.forEach(id => {
+        const chip = document.createElement('span');
+        chip.className = 'bg-[#a8d5e2] text-[#123] px-3 py-2 rounded-xl text-lg sm:text-xl font-bold';
+        chip.textContent = wordText(id);
+        sentenceEl.appendChild(chip);
+    });
+}
+
+function renderUI() {
+    const ui = T().ui || EN_UI;
+    $('tagline').textContent   = ui.tagline;
+    $('speak-lbl').textContent = ui.speak;
+    $('clear-lbl').textContent = ui.clear;
+    $('add-lbl').textContent   = ui.add;
+    $('add-input').placeholder = ui.typeHere;
+    instruction.textContent    = ui.instruction;
+    // right-to-left for Urdu
+    document.documentElement.dir = (currentLang === 'ur') ? 'rtl' : 'ltr';
+}
+
+// ============ Speech (text-to-speech) ============
+function ttsLang() { return (LANGS.find(l => l.code === currentLang) || {}).tts || 'en-IN'; }
+function speak(text) {
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = ttsLang(); u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+}
+function speakOne(id) { speak(wordText(id)); }
+function speakSentence() { speak(sentence.map(wordText).join(' ')); }
+
+// ============ Actions ============
+async function switchLang(code) {
+    const ok = await ensureLang(code);
+    if (!ok) return;
+    currentLang = code;
+    localStorage.setItem('bolo_lang', code);
+    renderLangRail(); renderUI(); renderCards(); renderSentence();
+}
+
+async function addCustomWord() {
+    const raw = $('add-input').value.trim();
+    if (!raw) return;
+    const btn = $('add-btn'), lbl = $('add-lbl');
+    const id = 'custom_' + Date.now();
+    btn.disabled = true; lbl.textContent = (T().ui || EN_UI).adding;
+    try {
+        // store the English base + a translation for every language we already know
+        EN_WORDS[id] = raw;
+        cache.en.words[id] = raw;
+        // translate into the CURRENT language (and cache it)
+        if (currentLang !== 'en') {
+            try {
+                const [tx] = await translateBatch([raw], currentLang);
+                cache[currentLang].words[id] = tx || raw;
+                saveCache();
+            } catch (_) { cache[currentLang].words[id] = raw; }
+        }
+        customWords.push({ id, emoji:'💬', cat:'social' });
+        $('add-input').value = '';
+        renderCards();
+        speakOne(id);
+    } finally {
+        btn.disabled = false; lbl.textContent = (T().ui || EN_UI).add;
+    }
+}
+
+// ============ Wire up + start ============
+$('speak-btn').onclick = speakSentence;
+$('clear-btn').onclick = () => { sentence = []; renderSentence(); };
+$('back-btn').onclick  = () => { sentence.pop(); renderSentence(); };
+$('add-btn').onclick   = addCustomWord;
+$('add-input').addEventListener('keydown', e => { if (e.key === 'Enter') addCustomWord(); });
+// some browsers load voices late — nudge them
+if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+
+(async function start() {
+    if (!cache[currentLang]) { const ok = await ensureLang(currentLang); if (!ok) currentLang = 'en'; }
+    renderLangRail(); renderUI(); renderCards(); renderSentence();
+})();
+</script>
+</body>
+</html>
